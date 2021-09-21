@@ -5,15 +5,16 @@ from apache_beam.options.pipeline_options import PipelineOptions
 class MapFields(beam.DoFn):
     def process(self, element):
         res = {
+            "id": str(element["_id"]),
             "name": element["productName"],
             "created_at": element["createdAt"],
             "updated_at": element["updatedAt"],
         }
+
         return [res]
 
 
 menus_db = "mongodb+srv://eodevstore:eodevstore@poc-zw0qt.mongodb.net"
-output_filename = "result.txt"
 
 def run(argv=None):
     parser = argparse.ArgumentParser()
@@ -39,11 +40,12 @@ def run(argv=None):
                 }
             ) | beam.ParDo(MapFields())
 
-        beam.io.WriteToBigQuery(
-            table="products_bq",
+
+        docs | beam.io.WriteToBigQuery(
+            known_args.output,
+            schema='id:string, name:STRING, created_at:INTEGER, updated_at:integer',
+            create_disposition=beam.io.BigQueryDisposition.CREATE_IF_NEEDED,
+            write_disposition=beam.io.BigQueryDisposition.WRITE_APPEND
         )
-
-        output = docs | beam.io.WriteToText(output_filename)
-
 
 run()
